@@ -1,61 +1,123 @@
 #include "vhplatform.hpp"
 
 #include <fstream>
+#include <filesystem>
 
 #include "vhfsys.hpp"
 
 namespace fs = std::filesystem;
 
 /**
- * 
+ * @brief Checks whether the specified path refers to an existing file.
+ *
+ * @param filename Path to the file.
+ *
+ * @return true if the path exists and does not refer to a directory;
+ *         false otherwise.
+ *
+ * @note This function does not verify file access permissions.
  */
-bool VHFSYS::DirExist(const std::filesystem::path &dirpath) {
-    if (dirpath.empty() || !fs::exists(dirpath)) {
+bool VHFSYS::FileExist(const std::string &filename)
+{
+    if (!std::filesystem::exists(filename))
         return false;
-    }
+
+    if (std::filesystem::is_directory(filename))
+        return false;
+
     return true;
 }
 
 /**
- * 
+ * @brief Checks whether the specified path refers to an existing directory.
+ *
+ * @param dirpath Path to the directory.
+ *
+ * @return true if the path refers to an existing directory;
+ *         false otherwise.
  */
-bool VHFSYS::DirExist(const std::string &dirpath) {
+bool VHFSYS::DirExist(const std::filesystem::path &dirpath)
+{
+    if (dirpath.empty())
+        return false;
+
+    if (!fs::exists(dirpath))
+        return false;
+
+    if (!std::filesystem::is_directory(dirpath))
+        return false;
+
+    return true;
+}
+
+/**
+ * @brief Checks whether the specified directory path exists.
+ *
+ * @param dirpath Directory path as a string.
+ *
+ * @return true if the path refers to an existing directory;
+ *         false otherwise.
+ */
+bool VHFSYS::DirExist(const std::string &dirpath)
+{
     return DirExist(fs::path(dirpath));
 }
 
 /**
- * 
+ * @brief Creates a directory and any missing parent directories.
+ *
+ * @param dirpath Path to the directory to create.
+ *
+ * @return vok if the directory already exists or is created successfully;
+ *         an error code otherwise.
+ *
+ * @note Existing parent directories are preserved.
  */
-verr VHFSYS::CreateNestedDir(const std::string &dirpath) {
+verr VHFSYS::CreateNestedDir(const std::string &dirpath)
+{
+    if (dirpath.empty())
+        return verror(1);
 
-    // Already exist ?
-    if (DirExist(dirpath))
+    const fs::path path(dirpath);
+
+    if (fs::is_directory(path))
         return vok;
 
-    // Failed to create directory ?
-    if (!fs::create_directories(dirpath)) {
+    if (fs::exists(path))
         return verror(1);
-    }
 
-    // Success
-    return vok;
+    if (fs::create_directories(path) || fs::is_directory(path))
+        return vok;
+
+    return verror(1);
 }
 
 /**
- * Реализация чтения файла в вектор байт
+ * @brief Reads the entire contents of a file into a byte vector.
+ *
+ * @param filename Path to the input file.
+ *
+ * @return A vector containing the file data.
+ *         An empty vector is returned if the file is empty
+ *         or an error occurs.
+ *
+ * @note The file is opened in binary mode.
  */
-std::vector<uint8_t> VHFSYS::ReadVectorFromFile(const std::string &filename) {
+std::vector<uint8_t> VHFSYS::ReadVectorFromFile(const std::string &filename)
+{
     std::vector<uint8_t> r;
-    
+
     // Открываем файл в бинарном режиме с курсором в конце (ate), чтобы узнать размер
     std::ifstream in(filename, std::ios::binary | std::ios::ate);
-    if (!in) {
+    if (!in)
+    {
         return r;
     }
 
     // Получаем размер файла
     std::streamsize size = in.tellg();
-    if (size <= 0) {
+    if (size <= 0)
+    {
         return r;
     }
 
@@ -67,7 +129,8 @@ std::vector<uint8_t> VHFSYS::ReadVectorFromFile(const std::string &filename) {
     in.read(reinterpret_cast<char *>(r.data()), size);
 
     // Если при чтении произошла ошибка, очищаем вектор
-    if (!in) {
+    if (!in)
+    {
         r.clear();
     }
 
@@ -75,33 +138,72 @@ std::vector<uint8_t> VHFSYS::ReadVectorFromFile(const std::string &filename) {
 }
 
 /**
- * 
+ * @brief Reads the entire contents of a file into a byte vector.
+ *
+ * @param filename Path to the input file.
+ *
+ * @return A vector containing the file data.
+ *         An empty vector is returned if the file is empty
+ *         or an error occurs.
+ *
+ * @note The file is opened in binary mode.
  */
-verr VHFSYS::WriteVectorToFile(const std::string &filename, const std::vector<uint8_t> &data) {
+verr VHFSYS::WriteVectorToFile(
+    const std::string &filename,
+    const std::vector<uint8_t> &data)
+{
+    if (filename.empty())
+        return verror(1);
 
-    fs::path filePath(filename);
-    fs::path dir = filePath.parent_path();
+    const fs::path filePath(filename);
+    const fs::path dir = filePath.parent_path();
 
-    // Create directory if it does not exist
-    if (!DirExist(dir)) {
-        if (vok != CreateNestedDir(dir))
+    // Create parent directories only if the path is not empty.
+    if (!dir.empty() && !DirExist(dir))
+    {
+        if (vok != CreateNestedDir(dir.string()))
             return verror(1);
     }
 
-    // Open file in binary mode
-    std::ofstream out(filePath, std::ios::binary);
-    if (!out) {
-        // Failed to open file
+    std::ofstream out(filePath, std::ios::binary | std::ios::trunc);
+    if (!out)
         return verror(2);
+
+    if (!data.empty())
+    {
+        out.write(
+            reinterpret_cast<const char *>(data.data()),
+            static_cast<std::streamsize>(data.size()));
     }
 
-    // Write data to file
-    out.write(reinterpret_cast<const char *>(data.data()),
-              static_cast<std::streamsize>(data.size()));
-    if (!out) {
-        // Write error
+    if (!out)
         return verror(3);
-    }
+
+    out.close();
+
+    if (out.fail())
+        return verror(3);
 
     return vok;
+}
+
+/**
+ * @brief Extracts the filename component from a path string.
+ *
+ * Supports both forward slashes ('/') and backslashes ('\\')
+ * as path separators.
+ *
+ * @param fullPathFileName Full or relative path to process.
+ *
+ * @return The filename component, or an empty string if the path
+ *         ends with a separator or the input is empty.
+ */
+std::string VHFSYS::ExtractFilename(const std::string &fullPathFileName)
+{
+    size_t last_slash = fullPathFileName.find_last_of("/\\");
+    if (last_slash == std::string::npos)
+    {
+        return fullPathFileName;
+    }
+    return fullPathFileName.substr(last_slash + 1);
 }
