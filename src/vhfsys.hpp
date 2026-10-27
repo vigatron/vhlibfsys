@@ -6,9 +6,9 @@
  * Disclaimer    : Provided "AS IS", without warranty.
  * License       : MIT
  * File          : src/vhfsys.hpp
- * Content size  : 662
- * Date / Time   : 27-10-2026 21:54:50
- * MD5           : e54614b9b903ce98ad2250f83d21c37e
+ * Content size  : 681
+ * Date / Time   : 27-10-2026 22:12:08
+ * MD5           : 5db2dd70c2e88ec24ef78cbc25515b9b
  * Notes         : MD5 = file content without header/footer
  * Encoding      : UTF-8
  * Author        : Viktor Glebov / V01G04A81
@@ -16,9 +16,10 @@
  * ========================[ BEGIN FILE CONTENT ]====================================== */
 #pragma once
 
-#include <filesystem>
+#include <cstdint>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 class VHFSYS
 {
@@ -44,8 +45,8 @@ class VHFSYS
  * Library          : vhlibfsys
  * File             : src/vhfsys.hpp
  * Revision         : 0.1.1
- * Content size     : 662
- * Date / Time      : 27-10-2026 21:54:50
- * MD5              : e54614b9b903ce98ad2250f83d21c37e
+ * Content size     : 681
+ * Date / Time      : 27-10-2026 22:12:08
+ * MD5              : 5db2dd70c2e88ec24ef78cbc25515b9b
  * Copyright        : © 2026 Viktor Glebov
  * ====================================================================== */
