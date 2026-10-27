@@ -1,0 +1,9 @@
+/* ========================[  END FILE CONTENT  ]========================
+ * Library          : vhlibfsys
+ * File             : ${fname}
+ * Revision         : 0.1.0
+ * Content size     : ${cntsz}
+ * Date / Time      : ${fdatetime}
+ * MD5              : ${fmd5}
+ * Copyright        : © 2026 Viktor Glebov
+ * ====================================================================== */
