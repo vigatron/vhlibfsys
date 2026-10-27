@@ -1,27 +1,32 @@
 /* ======================================================================================
  * Library       : vhlibfsys
  * Description   : A small C++17 filesystem helper library with 64-bit binary file I/O.
- * Revision      : 0.1.0
+ * Revision      : 0.1.1
  * Source        : https://github.com/vigatron/vhlibfsys
  * Disclaimer    : Provided "AS IS", without warranty.
  * License       : MIT
  * File          : src/vhfsys.cpp
- * Content size  : 5069
- * Date / Time   : 27-10-2026 21:37:19
- * MD5           : b384ea319c9721cf6fa6a117bea7323e
+ * Content size  : 5168
+ * Date / Time   : 27-10-2026 21:54:50
+ * MD5           : e35da9354ee0ac52863525582e7fef61
  * Notes         : MD5 = file content without header/footer
  * Encoding      : UTF-8
  * Author        : Viktor Glebov / V01G04A81
  * Copyright     : © 2026 Viktor Glebov
  * ========================[ BEGIN FILE CONTENT ]====================================== */
-#include "vhplatform.hpp"
-
 #include <fstream>
 #include <filesystem>
 
 #include "vhfsys.hpp"
 
 namespace fs = std::filesystem;
+
+#ifndef VHPLATFORM_INCLUDED
+using verr=uint32_t;
+#define vok ((verr)0)
+
+verr verror(verr retcode) { return retcode; }
+#endif
 
 /**
  * @brief Checks whether the specified path refers to an existing file.
@@ -226,9 +231,9 @@ std::string VHFSYS::ExtractFilename(const std::string &fullPathFileName)
 /* ========================[  END FILE CONTENT  ]========================
  * Library          : vhlibfsys
  * File             : src/vhfsys.cpp
- * Revision         : 0.1.0
- * Content size     : 5069
- * Date / Time      : 27-10-2026 21:37:19
- * MD5              : b384ea319c9721cf6fa6a117bea7323e
+ * Revision         : 0.1.1
+ * Content size     : 5168
+ * Date / Time      : 27-10-2026 21:54:50
+ * MD5              : e35da9354ee0ac52863525582e7fef61
  * Copyright        : © 2026 Viktor Glebov
  * ====================================================================== */

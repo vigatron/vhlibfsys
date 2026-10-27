@@ -1,7 +1,7 @@
 /* ======================================================================================
  * Library       : vhlibfsys
  * Description   : A small C++17 filesystem helper library with 64-bit binary file I/O.
- * Revision      : 0.1.0
+ * Revision      : 0.1.1
  * Source        : https://github.com/vigatron/vhlibfsys
  * Disclaimer    : Provided "AS IS", without warranty.
  * License       : MIT

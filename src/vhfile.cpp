@@ -1,13 +1,13 @@
 /* ======================================================================================
  * Library       : vhlibfsys
  * Description   : A small C++17 filesystem helper library with 64-bit binary file I/O.
- * Revision      : 0.1.0
+ * Revision      : 0.1.1
  * Source        : https://github.com/vigatron/vhlibfsys
  * Disclaimer    : Provided "AS IS", without warranty.
  * License       : MIT
  * File          : src/vhfile.cpp
  * Content size  : 5378
- * Date / Time   : 27-10-2026 21:37:19
+ * Date / Time   : 27-10-2026 21:54:50
  * MD5           : fc308dfb0a891d273c3bdffc0aea34d5
  * Notes         : MD5 = file content without header/footer
  * Encoding      : UTF-8
@@ -365,9 +365,9 @@ void VHFile::dmpwerr()
 /* ========================[  END FILE CONTENT  ]========================
  * Library          : vhlibfsys
  * File             : src/vhfile.cpp
- * Revision         : 0.1.0
+ * Revision         : 0.1.1
  * Content size     : 5378
- * Date / Time      : 27-10-2026 21:37:19
+ * Date / Time      : 27-10-2026 21:54:50
  * MD5              : fc308dfb0a891d273c3bdffc0aea34d5
  * Copyright        : © 2026 Viktor Glebov
  * ====================================================================== */
