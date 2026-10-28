@@ -14,84 +14,28 @@
  * Author        : Viktor Glebov / V01G04A81
  * Copyright     : © 2026 Viktor Glebov
  * ========================[ BEGIN FILE CONTENT ]====================================== */
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
 
 #include "vhfile.hpp"
 
 #include <cerrno>
 #include <cstring>
-#include <limits>
 #include <utility>
 
-#ifdef _WIN32
-#include <io.h>
-#include <sys/stat.h>
-#else
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-#endif
-
-namespace
-{
+/**
+ * @brief Default constructor. Creates a closed file object with empty filename.
+ */
+VHFile::VHFile() : fname(), file(nullptr), writable(false) {}
 
 /**
- * @brief Seek to an absolute 64-bit offset.
+ * @brief Constructor that stores filename. Does not open the file.
+ * @param filename Path to the file to be opened later.
  */
-bool seek64(FILE *file, std::uint64_t pos)
+VHFile::VHFile(const std::string &filename) : fname(filename), file(nullptr), writable(false)
 {
-#ifdef _WIN32
-    if (pos > static_cast<std::uint64_t>(std::numeric_limits<long long>::max()))
-        return false;
-
-    return _fseeki64(file, static_cast<long long>(pos), SEEK_SET) == 0;
-#else
-    const off_t value = static_cast<off_t>(pos);
-
-    if (value < 0 || static_cast<std::uint64_t>(value) != pos)
-        return false;
-
-    return ::fseeko(file, value, SEEK_SET) == 0;
-#endif
 }
 
 /**
- * @brief Get the current 64-bit offset.
- */
-bool tell64(FILE *file, std::uint64_t &pos)
-{
-#ifdef _WIN32
-    const __int64 value = _ftelli64(file);
-#else
-    const off_t value = ::ftello(file);
-#endif
-
-    if (value < 0)
-        return false;
-
-    pos = static_cast<std::uint64_t>(value);
-    return true;
-}
-
-} // namespace
-
-/**
- *
- */
-VHFile::VHFile() : file(nullptr), writable(false) {}
-
-/**
- *
- */
-VHFile::VHFile(const std::string &filename) : file(nullptr), writable(false)
-{
-    assign(filename);
-}
-
-/**
- *
+ * @brief Destructor. Closes the file if open.
  */
 VHFile::~VHFile()
 {
@@ -99,7 +43,8 @@ VHFile::~VHFile()
 }
 
 /**
- *
+ * @brief Move constructor. Transfers ownership of file handle and filename.
+ * @param other Source object to move from. Left in closed state.
  */
 VHFile::VHFile(VHFile &&other) noexcept
     : fname(std::move(other.fname)),
@@ -111,7 +56,9 @@ VHFile::VHFile(VHFile &&other) noexcept
 }
 
 /**
- *
+ * @brief Move assignment operator. Closes current handle and transfers ownership from other.
+ * @param other Source object to move from. Left in closed state.
+ * @return Reference to this object.
  */
 VHFile &VHFile::operator=(VHFile &&other) noexcept
 {
@@ -131,7 +78,8 @@ VHFile &VHFile::operator=(VHFile &&other) noexcept
 }
 
 /**
- *
+ * @brief Assigns a new filename. Closes current file if open, does not open new file.
+ * @param filename New path to file.
  */
 void VHFile::assign(const std::string &filename)
 {
@@ -142,95 +90,46 @@ void VHFile::assign(const std::string &filename)
 }
 
 /**
- *
+ * @brief Checks if file is open.
+ * @return true if file handle != nullptr.
  */
 bool VHFile::isopen() const
 {
     return file != nullptr;
 }
 
-/** */
+/**
+ * @brief Checks if file is closed.
+ * @return true if file handle == nullptr.
+ */
 bool VHFile::isclosed() const
 {
     return file == nullptr;
 }
 
 /**
- *
- */
-bool VHFile::filesize(std::uint64_t *size)
-{
-    if (size == nullptr)
-        return false;
-
-    if (isclosed() && !openfile())
-        return false;
-
-    // Make buffered writes visible to fstat().
-    if (writable && std::fflush(file) != 0)
-        return false;
-
-#ifdef _WIN32
-    struct _stat64 st;
-    if (_fstat64(_fileno(file), &st) != 0)
-        return false;
-#else
-    struct stat st;
-    if (fstat(fileno(file), &st) != 0)
-        return false;
-#endif
-
-    if (st.st_size < 0)
-        return false;
-
-    *size = static_cast<std::uint64_t>(st.st_size);
-
-    return true;
-}
-
-/** */
-bool VHFile::seek(std::uint64_t pos)
-{
-    if (isclosed() && !openfile())
-        return false;
-
-    return seek64(file, pos);
-}
-
-/** */
-bool VHFile::pos(std::uint64_t *pos)
-{
-    if (pos == nullptr)
-        return false;
-
-    if (isclosed() && !openfile())
-        return false;
-
-    return tell64(file, *pos);
-}
-
-/**
- *
+ * @brief Reads exactly sz bytes into ptr.
+ * @details If file is closed, opens read-only. Returns false if file is open for writing.
+ *          Loops until all bytes read or error. If seekoffs != 0, seeks to seekoffs first.
+ * @param ptr Destination buffer. Must not be nullptr if sz != 0.
+ * @param sz Number of bytes to read.
+ * @param seekoffs Absolute offset to seek to before reading, or 0 for no seek.
+ * @return true if exactly sz bytes read (or sz == 0), false on error/short read.
  */
 bool VHFile::read(void *ptr, std::size_t sz, std::uint64_t seekoffs)
 {
-    //
     if (ptr == nullptr && sz != 0)
         return false;
 
-    //
     if (isclosed() && !openfile())
         return false;
 
-    //
     if (writable)
         return false;
 
-    //
     if (seekoffs != 0 && !seek(seekoffs))
         return false;
 
-    //
     if (sz == 0)
         return true;
 
@@ -252,7 +151,12 @@ bool VHFile::read(void *ptr, std::size_t sz, std::uint64_t seekoffs)
 }
 
 /**
- *
+ * @brief Writes exactly sz bytes from ptr.
+ * @details If file is closed, creates/truncates for writing. Returns false if file is open for reading.
+ *          Loops until all bytes written or error.
+ * @param ptr Source buffer. Must not be nullptr if sz != 0.
+ * @param sz Number of bytes to write.
+ * @return true if exactly sz bytes written (or sz == 0), false on error/short write.
  */
 bool VHFile::write(const void *ptr, std::size_t sz)
 {
@@ -286,7 +190,9 @@ bool VHFile::write(const void *ptr, std::size_t sz)
 }
 
 /**
- *
+ * @brief Opens file for reading in binary mode ("rb").
+ * @details Idempotent if already open read-only. Returns false if already open for writing.
+ * @return true if open for reading, false on failure.
  */
 bool VHFile::openfile()
 {
@@ -305,7 +211,9 @@ bool VHFile::openfile()
 }
 
 /**
- *
+ * @brief Opens file for writing in binary mode ("wb"), creating/truncating.
+ * @details Idempotent if already open writable. Returns false if already open for reading.
+ * @return true if open for writing, false on failure.
  */
 bool VHFile::createfile()
 {
@@ -324,7 +232,9 @@ bool VHFile::createfile()
 }
 
 /**
- *
+ * @brief Closes file handle.
+ * @details Resets handle to nullptr even if fclose fails. Safe to call multiple times.
+ * @return true if fclose succeeded, false if already closed or fclose failed.
  */
 bool VHFile::closefile()
 {
@@ -340,7 +250,7 @@ bool VHFile::closefile()
 }
 
 /**
- *
+ * @brief Prints read error message to stderr with filename and errno.
  */
 void VHFile::dmperr()
 {
@@ -352,7 +262,7 @@ void VHFile::dmperr()
 }
 
 /**
- *
+ * @brief Prints write/create error message to stderr with filename and errno.
  */
 void VHFile::dmpwerr()
 {

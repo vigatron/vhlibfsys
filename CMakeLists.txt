@@ -9,12 +9,20 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/generated/version_vhlibfsys.h"
 )
 
-add_library(vhlib_fsys STATIC
+set(VHLIB_FSYS_SOURCES
     src/vhfile.hpp
     src/vhfile.cpp
     src/vhfsys.hpp
     src/vhfsys.cpp
 )
+
+if(WIN32)
+    list(APPEND VHLIB_FSYS_SOURCES src/vhfile_win.cpp)
+else()
+    list(APPEND VHLIB_FSYS_SOURCES src/vhfile_unix.cpp)
+endif()
+
+add_library(vhlib_fsys STATIC ${VHLIB_FSYS_SOURCES})
 
 target_include_directories(vhlib_fsys PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
