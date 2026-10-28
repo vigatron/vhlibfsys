@@ -1,24 +1,24 @@
 <!--
   ======================================================================
   vhlibfsys — README
-  Revision : 0.1.1
+  Revision : 0.1.2
   Author   : Viktor Glebov / V01G04A81
   License  : MIT
   ======================================================================
 -->
-
+ 
 # vhlibfsys
-
+ 
 **A small C++17 filesystem helper library with 64-bit binary file I/O.**
-
+ 
 [![Language](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](#requirements-and-portability)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#requirements-and-portability)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
-
+ 
 | Property | Value |
 |---|---|
 | **Library** | `vhlibfsys` |
-| **Revision** | `0.1.1` |
+| **Revision** | `0.1.2` |
 | **Language** | C++17 |
 | **Author** | Viktor Glebov / V01G04A81 |
 | **License** | MIT |
@@ -85,50 +85,50 @@ Both classes are declared in the global namespace. Include `vhfile.hpp` for `VHF
 - **Predictable boolean contract** — every fallible `VHFile` operation returns `true` on success and `false` on failure.
 - **Filesystem helpers** — existence checks, recursive directory creation, whole-file vector I/O, and filename extraction in `VHFSYS`.
 - **No global state** — the library is safe to use from independent objects; no configuration or singleton is required.
-- **Small footprint** — only the C++17 standard library is needed. Since 0.1.1 the library has no external dependencies; `VHFSYS` defines its own `VHFSYS::verr` type alias.
-
+- **Small footprint** — only the C++17 standard library is needed. The library has no external dependencies; `VHFSYS` defines its own `VHFSYS::verr` type alias.
+ 
 ---
-
+ 
 ## Design principles
-
+ 
 ### Binary first
-
+ 
 All `VHFile` opens use binary mode:
-
+ 
 ```cpp
 std::fopen(fname.c_str(), "rb"); // read
 std::fopen(fname.c_str(), "wb"); // write, truncate
 ```
-
+ 
 This avoids the CRLF translation and Ctrl-Z handling that text mode performs on Windows.
-
+ 
 ### 64-bit everywhere
-
+ 
 Offsets, sizes, and positions are `std::uint64_t`. On POSIX the translation unit defines `_FILE_OFFSET_BITS=64` before including system headers, and the CMake target exports the same definition. On Windows the library calls `_fseeki64`, `_ftelli64`, `_fstat64`, and `_fileno`.
-
+ 
 ### Explicit success values
-
+ 
 `VHFile` returns `bool`: `true` means success, `false` means failure. It never returns a raw `fseek` result, because `fseek` returns `0` on success and non-zero on failure — a classic source of inverted logic.
-
+ 
 `VHFSYS` predicates return `bool`; operations that can fail return `VHFSYS::verr` (`std::uint32_t`), where `0` means success.
-
+ 
 ### Open once, use many times
-
+ 
 `VHFile` opens the file on demand and keeps it open:
-
+ 
 - the first `read`, `seek`, `pos`, or `filesize` on a closed object opens the file read-only;
 - the first `write` on a closed object creates or truncates the file for writing.
-
+ 
 Once open, the handle stays open until `closefile()`, `assign()`, move assignment, or destruction. This avoids reopening the file for every small read.
-
+ 
 ### Move-only ownership
-
+ 
 A raw `FILE *` must have exactly one owner. `VHFile` therefore deletes the copy constructor and copy assignment operator and provides move operations. A moved-from object is left closed and safe to destroy.
-
+ 
 ---
-
+ 
 ## Requirements and portability
-
+ 
 | Requirement | Details |
 |---|---|
 | **C++ standard** | C++17 or newer |
@@ -137,14 +137,14 @@ A raw `FILE *` must have exactly one owner. `VHFile` therefore deletes the copy 
 | **POSIX** | `fseeko`, `ftello`, `fstat`, `fileno`; `_FILE_OFFSET_BITS=64` is defined by CMake |
 | **Windows** | `_fseeki64`, `_ftelli64`, `_fstat64`, `_fileno`; binary mode |
 | **Dependency** | None — only the C++17 standard library |
-
+ 
 ### Portability notes
-
+ 
 - On POSIX, the library requires large-file support. The CMake target adds `_FILE_OFFSET_BITS=64` publicly; the source file also defines it as a fallback when compiled outside CMake.
 - On Windows, the library uses the 64-bit CRT functions directly, so `long` being 32-bit does not limit file offsets.
 - `VHFile` accepts a narrow `std::string` filename and passes it to `fopen`. On Windows, non-ASCII paths depend on the active narrow-character code page. If Unicode paths are required, convert them to the active code page before constructing `VHFile`, or extend the class with a wide-character overload.
 - `VHFSYS` uses `std::filesystem`, which may require linking `stdc++fs` on older GCC versions (GCC 8 and earlier). Modern toolchains do not need an extra library.
-- Since 0.1.1 both headers are self-contained: `vhfile.hpp` and `vhfsys.hpp` include only standard headers. `_FILE_OFFSET_BITS=64` is defined both in `vhfile.cpp` and, on POSIX, by the CMake target.
+- Both headers are self-contained: `vhfile.hpp` and `vhfsys.hpp` include only standard headers. `_FILE_OFFSET_BITS=64` is defined both in `vhfile.cpp` and, on POSIX, by the CMake target.
 
 ---
 
@@ -1318,7 +1318,8 @@ Possible future additions:
 
 | Version | Changes |
 |---|---|
-| **0.1.1** | Removed the `vhlibplatform` dependency. `VHFSYS` now defines its own nested `verr` alias (`std::uint32_t`); `vok`/`verror` are internal helpers in `vhfsys.cpp`; `vhfsys.hpp` includes `<string>` and `<vector>` directly; `CMakeLists.txt` no longer searches for or links `vhlib_platform`; standalone builds work with the C++17 standard library only. |
+| **0.1.2** | Platform-specific implementation split (Windows/Linux). Full Doxygen documentation added for all class methods. Unit tests added in `tests/` with separate `tests/CMakeLists.txt`, integrated via `enable_testing()`/`ctest`, configurable with `MYLIB_BUILD_TESTS`. |
+| **0.1.1** | Removed external dependencies. `VHFSYS` now defines its own nested `verr` alias (`std::uint32_t`); `vok`/`verror` are internal helpers in `vhfsys.cpp`; `vhfsys.hpp` includes `<string>` and `<vector>` directly; standalone builds work with the C++17 standard library only. |
 | **0.1.0** | 64-bit offsets and sizes; large-file support on Windows and POSIX; binary-only mode; exact `read`/`write`; `filesize` via `fstat` without moving the position; move-only ownership; `seek` and `write` correctness fixes. |
 | **0.0.2** | Initial public revision. |
 | **0.0.1** | Initial implementation. |
@@ -1343,6 +1344,6 @@ The software is provided “AS IS”, without warranty of any kind, express or i
 
 ---
 
-**vhlibfsys** · Revision **0.1.1** · C++17 · MIT
+**vhlibfsys** · Revision **0.1.2** · C++17 · MIT
 
 (С) 2026 Viktor Glebov / V01G04A81
