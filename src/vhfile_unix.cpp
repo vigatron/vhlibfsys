@@ -36,6 +36,23 @@ namespace
 {
 
 /**
+ * @brief Copies a filename, returning an empty string on allocation failure.
+ * @param filename Source filename.
+ * @return Copy of filename, or empty string if allocation fails.
+ */
+std::string copy_filename_or_empty(const std::string &filename) noexcept
+{
+    try
+    {
+        return std::string(filename);
+    }
+    catch (...)
+    {
+        return std::string();
+    }
+}
+
+/**
  * @brief Seek to an absolute 64-bit offset (POSIX).
  * @param file File handle.
  * @param pos Absolute position.
@@ -73,14 +90,17 @@ bool tell64_unix(FILE *file, std::uint64_t &pos)
 /**
  * @brief Default constructor. Creates a closed file object with empty filename.
  */
-VHFile::VHFile() : fname(), file(nullptr), writable(false) {}
+VHFile::VHFile() noexcept : fname(), file(nullptr), writable(false) {}
 
 
 /**
  * @brief Constructor that stores filename. Does not open the file.
  * @param filename Path to the file to be opened later.
  */
-VHFile::VHFile(const std::string &filename) : fname(filename), file(nullptr), writable(false)
+VHFile::VHFile(const std::string &filename) noexcept
+    : fname(copy_filename_or_empty(filename)),
+      file(nullptr),
+      writable(false)
 {
 }
 
@@ -131,19 +151,28 @@ VHFile &VHFile::operator=(VHFile &&other) noexcept
  * @brief Assigns a new filename. Closes current file if open, does not open new file.
  * @param filename New path to file.
  */
-void VHFile::assign(const std::string &filename)
+void VHFile::assign(const std::string &filename) noexcept
 {
-    if (isopen())
-        closefile();
+    try
+    {
+        std::string tmp(filename);
 
-    fname = filename;
+        if (isopen())
+            closefile();
+
+        fname.swap(tmp);
+    }
+    catch (...)
+    {
+        // Leave the previous filename and open handle intact if allocation fails.
+    }
 }
 
 /**
  * @brief Checks if file is open.
  * @return true if file handle != nullptr.
  */
-bool VHFile::isopen() const
+bool VHFile::isopen() const noexcept
 {
     return file != nullptr;
 }
@@ -153,7 +182,7 @@ bool VHFile::isopen() const
  * @brief Checks if file is closed.
  * @return true if file handle == nullptr.
  */
-bool VHFile::isclosed() const
+bool VHFile::isclosed() const noexcept
 {
     return file == nullptr;
 }
@@ -167,7 +196,7 @@ bool VHFile::isclosed() const
  * @param seekoffs Absolute offset to seek to before reading, or 0 for no seek.
  * @return true if exactly sz bytes read (or sz == 0), false on error/short read.
  */
-bool VHFile::read(void *ptr, std::size_t sz, std::uint64_t seekoffs)
+bool VHFile::read(void *ptr, std::size_t sz, std::uint64_t seekoffs) noexcept
 {
     if (ptr == nullptr && sz != 0)
         return false;
@@ -209,7 +238,7 @@ bool VHFile::read(void *ptr, std::size_t sz, std::uint64_t seekoffs)
  * @param sz Number of bytes to write.
  * @return true if exactly sz bytes written (or sz == 0), false on error/short write.
  */
-bool VHFile::write(const void *ptr, std::size_t sz)
+bool VHFile::write(const void *ptr, std::size_t sz) noexcept
 {
     if (ptr == nullptr && sz != 0)
         return false;
@@ -245,7 +274,7 @@ bool VHFile::write(const void *ptr, std::size_t sz)
  * @details Idempotent if already open read-only. Returns false if already open for writing.
  * @return true if open for reading, false on failure.
  */
-bool VHFile::openfile()
+bool VHFile::openfile() noexcept
 {
     if (isopen())
         return !writable;
@@ -266,7 +295,7 @@ bool VHFile::openfile()
  * @details Idempotent if already open writable. Returns false if already open for reading.
  * @return true if open for writing, false on failure.
  */
-bool VHFile::createfile()
+bool VHFile::createfile() noexcept
 {
     if (isopen())
         return writable;
@@ -287,7 +316,7 @@ bool VHFile::createfile()
  * @details Resets handle to nullptr even if fclose fails. Safe to call multiple times.
  * @return true if fclose succeeded, false if already closed or fclose failed.
  */
-bool VHFile::closefile()
+bool VHFile::closefile() noexcept
 {
     if (isclosed())
         return false;
@@ -303,7 +332,7 @@ bool VHFile::closefile()
 /**
  * @brief Prints read error message to stderr with filename and errno.
  */
-void VHFile::dmperr()
+void VHFile::dmperr() noexcept
 {
     std::fprintf(
         stderr,
@@ -315,7 +344,7 @@ void VHFile::dmperr()
 /**
  * @brief Prints write/create error message to stderr with filename and errno.
  */
-void VHFile::dmpwerr()
+void VHFile::dmpwerr() noexcept
 {
     std::fprintf(
         stderr,
@@ -327,7 +356,7 @@ void VHFile::dmpwerr()
 /**
  * @brief Seeks to absolute position.
  */
-bool VHFile::seek(std::uint64_t pos)
+bool VHFile::seek(std::uint64_t pos) noexcept
 {
     if (isclosed() && !openfile())
         return false;
@@ -338,7 +367,7 @@ bool VHFile::seek(std::uint64_t pos)
 /**
  * @brief Gets current file position.
  */
-bool VHFile::pos(std::uint64_t *pos)
+bool VHFile::pos(std::uint64_t *pos) noexcept
 {
     if (pos == nullptr)
         return false;
@@ -352,7 +381,7 @@ bool VHFile::pos(std::uint64_t *pos)
 /**
  * @brief Gets file size in bytes (POSIX).
  */
-bool VHFile::filesize(std::uint64_t *size)
+bool VHFile::filesize(std::uint64_t *size) noexcept
 {
     if (size == nullptr)
         return false;

@@ -3,7 +3,7 @@
 **A small C++17 filesystem helper library with 64-bit binary file I/O.**
  
 [![Language](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](#requirements-and-portability)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#requirements-and-portability)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey.svg)](#requirements-and-portability)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
  
 | Property | Value |
@@ -57,7 +57,7 @@
 The library contains two classes:
 
 - **`VHFile`** — a move-only RAII wrapper around a C `FILE *` handle. It always opens files in binary mode, supports files larger than 2 GiB, reads and writes exact byte counts, and does not change the stream position when querying the file size.
-- **`VHFSYS`** — a stateless collection of static helpers for checking files and directories, creating nested directories, reading a whole file into a `std::vector<uint8_t>`, writing a vector to a file, and extracting the filename component from a path.
+- **`VHFSYS`** — a stateless collection of static helpers for checking files and directories, creating nested directories, reading a whole file into a `std::vector<std::uint8_t>`, writing a vector to a file, and extracting the filename component from a path.
 
 Both classes are declared in the global namespace. Include `vhfile.hpp` for `VHFile` and `vhfsys.hpp` for `VHFSYS`.
 
@@ -67,12 +67,12 @@ Both classes are declared in the global namespace. Include `vhfile.hpp` for `VHF
 
 ## Features
 
-- **64-bit offsets and sizes** — `std::uint64_t` is used for file positions and sizes. Files larger than 2 GiB are supported on Windows and on 32-bit POSIX builds.
+- **64-bit offsets and sizes** — `std::uint64_t` is used for file positions and sizes. Files larger than 2 GiB are supported on Windows and on 32-bit Linux builds.
 - **Binary-only I/O** — `VHFile` always uses `"rb"` / `"wb"`; there is no text-mode translation.
 - **RAII ownership** — the destructor closes the handle. Copying is disabled; moving transfers ownership.
 - **Exact reads and writes** — `read()` and `write()` loop until the requested byte count is transferred or an error occurs.
 - **Exact file size without moving the position** — `filesize()` uses `fstat` / `_fstat64`, not `seek` to the end.
-- **Portable 64-bit seek** — `fseeko` / `ftello` on POSIX, `_fseeki64` / `_ftelli64` on Windows.
+- **Portable 64-bit seek** — `fseeko` / `ftello` on Linux, `_fseeki64` / `_ftelli64` on Windows.
 - **Predictable boolean contract** — every fallible `VHFile` operation returns `true` on success and `false` on failure.
 - **Filesystem helpers** — existence checks, recursive directory creation, whole-file vector I/O, and filename extraction in `VHFSYS`.
 - **No global state** — the library is safe to use from independent objects; no configuration or singleton is required.
@@ -95,7 +95,7 @@ This avoids the CRLF translation and Ctrl-Z handling that text mode performs on 
  
 ### 64-bit everywhere
  
-Offsets, sizes, and positions are `std::uint64_t`. On POSIX the translation unit defines `_FILE_OFFSET_BITS=64` before including system headers, and the CMake target exports the same definition. On Windows the library calls `_fseeki64`, `_ftelli64`, `_fstat64`, and `_fileno`.
+Offsets, sizes, and positions are `std::uint64_t`. On Linux the translation unit defines `_FILE_OFFSET_BITS=64` before including system headers, and the CMake target exports the same definition. On Windows the library calls `_fseeki64`, `_ftelli64`, `_fstat64`, and `_fileno`.
  
 ### Explicit success values
  
@@ -123,19 +123,19 @@ A raw `FILE *` must have exactly one owner. `VHFile` therefore deletes the copy 
 | Requirement | Details |
 |---|---|
 | **C++ standard** | C++17 or newer |
-| **Build system** | CMake 3.16+ (or compile `vhfile.cpp` / `vhfsys.cpp` directly) |
+| **Build system** | CMake 3.16+ (or compile the platform-specific `vhfile_unix.cpp` / `vhfile_win.cpp` and `vhfsys.cpp` directly) |
 | **Compiler** | GCC 9+, Clang 10+, MSVC 2019+ (recommended) |
-| **POSIX** | `fseeko`, `ftello`, `fstat`, `fileno`; `_FILE_OFFSET_BITS=64` is defined by CMake |
+| **Linux** | `fseeko`, `ftello`, `fstat`, `fileno`; `_FILE_OFFSET_BITS=64` is defined by CMake |
 | **Windows** | `_fseeki64`, `_ftelli64`, `_fstat64`, `_fileno`; binary mode |
 | **Dependency** | None — only the C++17 standard library |
  
 ### Portability notes
  
-- On POSIX, the library requires large-file support. The CMake target adds `_FILE_OFFSET_BITS=64` publicly; the source file also defines it as a fallback when compiled outside CMake.
+- On Linux, the library requires large-file support. The CMake target adds `_FILE_OFFSET_BITS=64` publicly; the source file also defines it as a fallback when compiled outside CMake.
 - On Windows, the library uses the 64-bit CRT functions directly, so `long` being 32-bit does not limit file offsets.
 - `VHFile` accepts a narrow `std::string` filename and passes it to `fopen`. On Windows, non-ASCII paths depend on the active narrow-character code page. If Unicode paths are required, convert them to the active code page before constructing `VHFile`, or extend the class with a wide-character overload.
 - `VHFSYS` uses `std::filesystem`, which may require linking `stdc++fs` on older GCC versions (GCC 8 and earlier). Modern toolchains do not need an extra library.
-- Both headers are self-contained: `vhfile.hpp` and `vhfsys.hpp` include only standard headers. `_FILE_OFFSET_BITS=64` is defined both in `vhfile.cpp` and, on POSIX, by the CMake target.
+- Both headers are self-contained: `vhfile.hpp` and `vhfsys.hpp` include only standard headers. `_FILE_OFFSET_BITS=64` is defined in `vhfile_unix.cpp` and, on Linux, by the CMake target.
 
 ---
 
@@ -152,9 +152,8 @@ vhlibfsys/
 │   └── footer.txt          # Source footer template
 ├── src/
 │   ├── vhfile.hpp          # VHFile class declaration
-│   ├── vhfile.cpp          # VHFile common implementation
-│   ├── vhfile_win.cpp      # VHFile Windows-specific implementation
-│   ├── vhfile_unix.cpp     # VHFile POSIX/Linux-specific implementation
+│   ├── vhfile_win.cpp      # VHFile Windows implementation
+│   ├── vhfile_unix.cpp     # VHFile Linux implementation
 │   ├── vhfsys.hpp          # VHFSYS class declaration
 │   └── vhfsys.cpp          # VHFSYS implementation
 ├── tests/
@@ -194,7 +193,7 @@ add_subdirectory(src/extmods/vhlibfsys)
 target_link_libraries(your_target PRIVATE vhlib_fsys)
 ```
 
-`vhlib_fsys` is a `STATIC` library. Its include directories (`src` and the generated version-header directory) are public, and on non-Windows builds it publicly defines `_FILE_OFFSET_BITS=64`.
+`vhlib_fsys` is a `STATIC` library. Its include directories (`src` and the generated version-header directory) are public, and on Linux builds it publicly defines `_FILE_OFFSET_BITS=64`.
 
 The parent project only needs:
 
@@ -243,20 +242,20 @@ To enable library tests from the top-level build, configure with `-DMYLIB_BUILD_
 
 Add `vhlibfsys/src` to the include path. Compile the library sources according to platform:
 
-- **Linux/POSIX:** `vhfile.cpp`, `vhfile_unix.cpp`, `vhfsys.cpp`
-- **Windows:** `vhfile.cpp`, `vhfile_win.cpp`, `vhfsys.cpp`
+- **Linux:** `vhfile_unix.cpp`, `vhfsys.cpp`
+- **Windows:** `vhfile_win.cpp`, `vhfsys.cpp`
 
-Both source files depend only on the C++17 standard library. On POSIX, define `_FILE_OFFSET_BITS=64` for all translation units that include `vhfile.hpp`; the implementation defines it as a fallback, and the CMake target exports it publicly.
+The library sources depend only on the C++17 standard library. On Linux, define `_FILE_OFFSET_BITS=64` for all translation units that include `vhfile.hpp`; the implementation defines it as a fallback, and the CMake target exports it publicly.
 
 ```bash
 # Linux example
 c++ -std=c++17 -D_FILE_OFFSET_BITS=64 -I vhlibfsys/src \
-    your_app.cpp vhlibfsys/src/vhfile.cpp vhlibfsys/src/vhfile_unix.cpp vhlibfsys/src/vhfsys.cpp
+    your_app.cpp vhlibfsys/src/vhfile_unix.cpp vhlibfsys/src/vhfsys.cpp
 ```
 
 ```bash
 # Windows example (MSVC)
-cl /std:c++17 /I vhlibfsys/src your_app.cpp vhlibfsys/src/vhfile.cpp vhlibfsys/src/vhfile_win.cpp vhlibfsys/src/vhfsys.cpp
+cl /std:c++17 /I vhlibfsys/src your_app.cpp vhlibfsys/src/vhfile_win.cpp vhlibfsys/src/vhfsys.cpp
 ```
 
 ---
@@ -569,7 +568,7 @@ Returns the current file position.
 
 **Notes:**
 - If the file is closed, it is opened read-only first.
-- Uses `ftello` on POSIX and `_ftelli64` on Windows.
+- Uses `ftello` on Linux and `_ftelli64` on Windows.
 - The position is an absolute offset from the beginning of the file.
 
 ```cpp
@@ -595,7 +594,7 @@ Moves the read/write position to an absolute byte offset.
 **Notes:**
 - If the file is closed, it is opened read-only first.
 - The operation is always absolute (`SEEK_SET`). There is no relative seek and no `SEEK_END` variant; use `filesize()` and arithmetic if you need them.
-- Uses `fseeko` on POSIX and `_fseeki64` on Windows.
+- Uses `fseeko` on Linux and `_fseeki64` on Windows.
 - Offsets above 2 GiB are supported.
 - The function validates that the 64-bit value fits into the platform's `off_t` / `__int64`.
 
@@ -801,7 +800,7 @@ Internal diagnostic used by `createfile()`. Prints a message to `stderr` contain
 ### Large-file behaviour
 
 - Offsets and sizes are `std::uint64_t` throughout the public API.
-- On POSIX, `_FILE_OFFSET_BITS=64` makes `off_t`, `fseeko`, `ftello`, and `fstat` 64-bit. The library defines it in `vhfile.cpp` and exports it from CMake.
+- On Linux, `_FILE_OFFSET_BITS=64` makes `off_t`, `fseeko`, `ftello`, and `fstat` 64-bit. The library defines it in `vhfile_unix.cpp` and exports it from CMake.
 - On Windows, `_fseeki64`, `_ftelli64`, and `_fstat64` are used directly.
 - `read()` and `write()` accept `std::size_t` byte counts. On a 64-bit process this can exceed 2 GiB per call, but the caller must provide a buffer of that size. For very large transfers, chunk the operation (see [Usage examples](#usage-examples)).
 - `filesize()` returns `std::uint64_t`.
@@ -825,35 +824,39 @@ class VHFSYS
 public:
     using verr = std::uint32_t;
 
-    static bool FileExist(const std::string &filename);
+    static constexpr verr vok = 0;
+    static constexpr verr verror(verr x) noexcept { return x; }
 
-    static bool DirExist(const std::filesystem::path &dirpath);
-    static bool DirExist(const std::string &dirpath);
+    static bool FileExist(const std::string &filename) noexcept;
 
-    static verr CreateNestedDir(const std::string &dirpath);
+    static bool DirExist(const std::filesystem::path &dirpath) noexcept;
+    static bool DirExist(const std::string &dirpath) noexcept;
 
-    static std::vector<std::uint8_t> ReadVectorFromFile(const std::string &filename);
+    static verr CreateNestedDir(const std::string &dirpath) noexcept;
+    static verr RemoveNestedDir(const std::string &dirpath) noexcept;
+
+    static std::vector<std::uint8_t> ReadVectorFromFile(const std::string &filename) noexcept;
     static verr WriteVectorToFile(const std::string &filename,
-                                  const std::vector<std::uint8_t> &data);
+                                  const std::vector<std::uint8_t> &data) noexcept;
 
-    static std::string ExtractFilename(const std::string &fullPathFileName);
+    static std::string ExtractFilename(const std::string &fullPathFileName) noexcept;
 };
 ```
 
-Header dependencies: `vhfsys.hpp` includes `<filesystem>`, `<string>`, and `<vector>`. It does not include `<cstdint>` explicitly and uses the unqualified `uint32_t` / `uint8_t` names, which are provided in practice by the standard headers above on the tested toolchains (GCC, Clang, MinGW). Include `<cstdint>` before `vhfsys.hpp` if your standard library does not expose those names in the global namespace.
+Header dependencies: `vhfsys.hpp` includes `<cstdint>`, `<filesystem>`, `<string>`, and `<vector>`. It uses `std::uint32_t` and `std::uint8_t`. All public member functions are `noexcept` and handle allocation/filesystem errors internally.
 
 <a id="vhfsys-class-overview"></a>
 ### Class overview
 
 `VHFSYS` is a stateless utility class. All member functions are `static`; there is no need to instantiate it. It uses `std::filesystem` for path queries and `std::ifstream` / `std::ofstream` for whole-file vector I/O.
 
-`verr` is the nested type alias `VHFSYS::verr`, which is `std::uint32_t`. Successful operations return `0`. The names `vok` and `verror()` are internal helpers used inside `vhfsys.cpp`; they are **not** exported by `vhfsys.hpp` and are therefore not available to consumers. Compare the returned value with `0` (or with `VHFSYS::verr(0)`).
+`verr` is the nested type alias `VHFSYS::verr`, which is `std::uint32_t`. Successful operations return `0`. The public helpers `VHFSYS::vok` (`0`) and `VHFSYS::verror(x)` (returns `x`) are exported by `vhfsys.hpp` and may be used by consumers.
 
 <a id="vhfsys-function-reference"></a>
 ### Function reference
 
 <a id="vhfsys-fileexist"></a>
-#### `static bool FileExist(const std::string &filename)`
+#### `static bool FileExist(const std::string &filename) noexcept`
 
 Checks whether a path exists and is not a directory.
 
@@ -868,7 +871,7 @@ Checks whether a path exists and is not a directory.
 - The implementation does not verify that the path is a **regular** file. A FIFO, socket, device, or other non-directory filesystem object returns `true`.
 - The function follows symbolic links: a symlink to a regular file returns `true`; a symlink to a directory returns `false`; a broken symlink returns `false`.
 - Access permissions are not checked.
-- The current implementation uses throwing `std::filesystem` overloads. On an OS-level error (for example, permission denied or a symlink loop), `std::filesystem::filesystem_error` may propagate.
+- The function uses `std::error_code` internally and never propagates `std::filesystem::filesystem_error`.
 
 ```cpp
 if (!VHFSYS::FileExist("model.gguf"))
@@ -878,7 +881,7 @@ if (!VHFSYS::FileExist("model.gguf"))
 ---
 
 <a id="vhfsys-direxist-path"></a>
-#### `static bool DirExist(const std::filesystem::path &dirpath)`
+#### `static bool DirExist(const std::filesystem::path &dirpath) noexcept`
 
 Checks whether a path exists and is a directory.
 
@@ -891,7 +894,7 @@ Checks whether a path exists and is a directory.
 
 **Notes:**
 - Symbolic links are followed; a symlink to a directory returns `true`.
-- The current implementation may throw `std::filesystem::filesystem_error` on OS-level errors.
+- The function uses `std::error_code` internally and never propagates `std::filesystem::filesystem_error`.
 
 ```cpp
 if (!VHFSYS::DirExist(std::filesystem::path("output")))
@@ -901,7 +904,7 @@ if (!VHFSYS::DirExist(std::filesystem::path("output")))
 ---
 
 <a id="vhfsys-direxist-string"></a>
-#### `static bool DirExist(const std::string &dirpath)`
+#### `static bool DirExist(const std::string &dirpath) noexcept`
 
 Convenience overload that converts a string to `std::filesystem::path` and calls the path overload.
 
@@ -929,7 +932,7 @@ if (!VHFSYS::DirExist(std::string("output")))
 ---
 
 <a id="vhfsys-createnesteddir"></a>
-#### `static verr CreateNestedDir(const std::string &dirpath)`
+#### `static verr CreateNestedDir(const std::string &dirpath) noexcept`
 
 Creates a directory and all missing parent directories.
 
@@ -944,7 +947,7 @@ Creates a directory and all missing parent directories.
 - Existing parent directories are preserved.
 - The operation is idempotent when the target is already a directory.
 - If the path exists as a regular file, the function returns `1`.
-- The current implementation may throw `std::filesystem::filesystem_error` on OS-level errors.
+- The function uses `std::error_code` internally and never propagates `std::filesystem::filesystem_error`.
 - The check-then-create sequence is not atomic; another process can change the filesystem between the check and `create_directories`.
 
 ```cpp
@@ -954,8 +957,32 @@ if (VHFSYS::CreateNestedDir("output/2026/data") != 0)
 
 ---
 
+<a id="vhfsys-removenesteddir"></a>
+#### `static verr RemoveNestedDir(const std::string &dirpath) noexcept`
+
+Removes a directory and all its contents recursively.
+
+**Parameters:**
+- `dirpath` — path to the directory to remove.
+
+**Returns:**
+- `0` if the directory and its contents were removed successfully.
+- `1` if `dirpath` is empty or removal fails.
+
+**Notes:**
+- A non-existent path is treated as success (the operation is idempotent).
+- The function uses `std::error_code` internally and never propagates `std::filesystem::filesystem_error`.
+- The operation removes files and directories recursively; use with care.
+
+```cpp
+if (VHFSYS::RemoveNestedDir("output/2026") != VHFSYS::vok)
+    return false;
+```
+
+---
+
 <a id="vhfsys-readvectorfromfile"></a>
-#### `static std::vector<uint8_t> ReadVectorFromFile(const std::string &filename)`
+#### `static std::vector<std::uint8_t> ReadVectorFromFile(const std::string &filename) noexcept`
 
 Reads the entire contents of a file into a byte vector.
 
@@ -963,19 +990,19 @@ Reads the entire contents of a file into a byte vector.
 - `filename` — path to the input file.
 
 **Returns:**
-- A `std::vector<uint8_t>` containing the file data.
+- A `std::vector<std::uint8_t>` containing the file data.
 - An empty vector if the file is empty, cannot be opened, cannot be measured, or a read error occurs.
 
 **Notes:**
 - The file is opened in binary mode with `std::ios::ate` to determine its size.
 - The function allocates a vector of the full file size and reads the file in one `std::ifstream::read` call.
 - **Empty result is ambiguous:** an empty file and an I/O error both produce an empty vector.
-- **Not suitable for multi-gigabyte files.** The whole file is held in memory; large files can cause `std::bad_alloc` or `std::length_error`.
+- **Not suitable for multi-gigabyte files.** The whole file is held in memory. Allocation failures are caught internally and produce an empty vector.
 - `std::streamsize` and `std::size_t` limits apply.
 - For large files, use `VHFile::read()` in chunks instead.
 
 ```cpp
-std::vector<uint8_t> data = VHFSYS::ReadVectorFromFile("small.bin");
+std::vector<std::uint8_t> data = VHFSYS::ReadVectorFromFile("small.bin");
 if (data.empty())
 {
     // Either the file is empty or an error occurred.
@@ -985,7 +1012,7 @@ if (data.empty())
 ---
 
 <a id="vhfsys-writevectortofile"></a>
-#### `static verr WriteVectorToFile(const std::string &filename, const std::vector<uint8_t> &data)`
+#### `static verr WriteVectorToFile(const std::string &filename, const std::vector<std::uint8_t> &data) noexcept`
 
 Writes a byte vector to a file, creating parent directories when needed.
 
@@ -1008,10 +1035,10 @@ Writes a byte vector to a file, creating parent directories when needed.
 - Empty `data` creates an empty file (after truncation).
 - The write is **not atomic**. A failure in the middle can leave a partially written file.
 - The function does not call `fsync` or `FlushFileBuffers`; durability is left to the OS.
-- `data.size()` is converted to `std::streamsize`; the vector must fit into that type.
+- If `data.size()` exceeds `std::numeric_limits<std::streamsize>::max()`, the function returns `3` without opening the file.
 
 ```cpp
-std::vector<uint8_t> data = {0x01, 0x02, 0x03};
+std::vector<std::uint8_t> data = {0x01, 0x02, 0x03};
 VHFSYS::verr rc = VHFSYS::WriteVectorToFile("output/data.bin", data);
 if (rc != 0)
     return false;
@@ -1020,7 +1047,7 @@ if (rc != 0)
 ---
 
 <a id="vhfsys-extractfilename"></a>
-#### `static std::string ExtractFilename(const std::string &fullPathFileName)`
+#### `static std::string ExtractFilename(const std::string &fullPathFileName) noexcept`
 
 Returns the filename component of a path string.
 
@@ -1055,23 +1082,23 @@ std::string name = VHFSYS::ExtractFilename("output/models/model.gguf");
 
 ### Return codes
 
-`VHFSYS` defines its own `verr` type alias inside the class:
+`VHFSYS` defines its own `verr` type alias inside the class and exports the public helpers `vok` and `verror`:
 
 ```cpp
 class VHFSYS
 {
 public:
     using verr = std::uint32_t;
+    static constexpr verr vok = 0;
+    static constexpr verr verror(verr x) noexcept { return x; }
     // ...
 };
 ```
 
-Successful operations return `0`. Internally `vhfsys.cpp` uses `vok` (`0`) and `verror(code)` (returns `code`), but these names are not part of the public header. In consumer code use `0`, or define your own constant:
+Successful operations return `0`. Use the public `VHFSYS::vok` constant:
 
 ```cpp
-constexpr VHFSYS::verr vok = 0;
-
-if (VHFSYS::CreateNestedDir("output/2026/data") != vok)
+if (VHFSYS::CreateNestedDir("output/2026/data") != VHFSYS::vok)
     return false;
 ```
 
@@ -1080,6 +1107,7 @@ if (VHFSYS::CreateNestedDir("output/2026/data") != vok)
 | `FileExist` | `true` | `false` |
 | `DirExist` | `true` | `false` |
 | `CreateNestedDir` | `0` | `1` |
+| `RemoveNestedDir` | `0` | `1` |
 | `ReadVectorFromFile` | non-empty vector (or empty for an empty file) | empty vector |
 | `WriteVectorToFile` | `0` | `1`, `2`, or `3` |
 | `ExtractFilename` | filename string | empty string |
@@ -1267,11 +1295,12 @@ cd build && ctest --output-on-failure -C Release
 
 | Function | Failure indication |
 |---|---|
-| `FileExist` / `DirExist` | `false`; may throw `std::filesystem::filesystem_error`. |
-| `CreateNestedDir` | `1`; may throw `std::filesystem::filesystem_error`. |
-| `ReadVectorFromFile` | Empty vector; cannot distinguish an empty file from an error. May throw `std::bad_alloc` / `std::length_error`. |
-| `WriteVectorToFile` | `1`, `2`, or `3`. |
-| `ExtractFilename` | Empty string for empty input or a trailing separator. |
+| `FileExist` / `DirExist` | `false`; `noexcept`, filesystem errors are converted to `false`. |
+| `CreateNestedDir` | `1`; `noexcept`, filesystem errors are converted to `1`. |
+| `RemoveNestedDir` | `1`; `noexcept`, filesystem errors are converted to `1`. |
+| `ReadVectorFromFile` | Empty vector; `noexcept`, allocation errors are caught and produce an empty vector. |
+| `WriteVectorToFile` | `1`, `2`, or `3`; `noexcept`, write/flush/close errors are converted to codes. |
+| `ExtractFilename` | Empty string for empty input or a trailing separator; `noexcept`. |
 
 ---
 
@@ -1279,7 +1308,7 @@ cd build && ctest --output-on-failure -C Release
 
 The current revision is intentionally small. The following limitations are known:
 
-1. **`VHFSYS` filesystem queries use throwing overloads.** `FileExist`, `DirExist`, and `CreateNestedDir` can propagate `std::filesystem::filesystem_error` on permission errors, symlink loops, and similar OS failures. A future revision should use the `std::error_code` overloads and return `false` / `verr` instead.
+1. **`VHFSYS` filesystem helpers return only `bool` / `verr`.** `FileExist`, `DirExist`, `CreateNestedDir`, and `RemoveNestedDir` are `noexcept` and use `std::error_code` internally, but callers do not receive a detailed error code.
 2. **`ReadVectorFromFile` loads the whole file.** It is convenient for small configuration and metadata files but unsuitable for multi-gigabyte models. Use `VHFile` with a chunked loop for large data.
 3. **`WriteVectorToFile` is not atomic.** A partial write can leave a truncated output file. A write-to-temporary-then-rename strategy would be safer.
 4. **No positional I/O.** `VHFile` has a single shared position. Concurrent random access requires separate instances or an OS-specific `pread` / `ReadFile` / `mmap` layer.
@@ -1291,17 +1320,16 @@ The current revision is intentionally small. The following limitations are known
 10. **No `flush()` API.** `closefile()`, the destructor, or `filesize()` on a writable handle flushes buffered data.
 11. **`FileExist` accepts non-regular files.** It only excludes directories; FIFOs, sockets, and devices return `true`.
 12. **`WriteVectorToFile` does not fsync.** Data durability is left to the operating system.
-13. **`vhfsys.hpp` relies on transitive `<cstdint>` inclusion.** The header uses unqualified `uint32_t` / `uint8_t` but includes only `<filesystem>`, `<string>`, and `<vector>`. This works on the tested GCC, Clang, and MinGW toolchains, but a different standard library may require an explicit `#include <cstdint>`.
+13. **`VHFSYS` does not expose structured error codes for predicates.** `FileExist` and `DirExist` collapse all failures to `false`; use `std::error_code`-based APIs if a caller needs to distinguish permission errors from missing paths.
 
 Possible future additions:
 
-- `std::error_code`-based filesystem helpers;
 - streaming/chunked `ReadVectorFromFile` alternatives;
 - atomic file writes via temporary file + rename;
 - positional reads (`read_at`) and memory-mapped access;
 - wide-character filename overloads for Windows;
 - an explicit `flush()` method and read/write mode support;
-- an explicit `<cstdint>` include in `vhfsys.hpp`.
+- structured error codes for `VHFSYS` predicates and operations.
 
 ---
 
@@ -1310,8 +1338,8 @@ Possible future additions:
 | Version | Changes |
 |---|---|
 | **0.1.2** | Platform-specific implementation split (Windows/Linux). Full Doxygen documentation added for all class methods. Unit tests added in `tests/` with separate `tests/CMakeLists.txt`, integrated via `enable_testing()`/`ctest`, configurable with `MYLIB_BUILD_TESTS`. |
-| **0.1.1** | Removed external dependencies. `VHFSYS` now defines its own nested `verr` alias (`std::uint32_t`); `vok`/`verror` are internal helpers in `vhfsys.cpp`; `vhfsys.hpp` includes `<string>` and `<vector>` directly; standalone builds work with the C++17 standard library only. |
-| **0.1.0** | 64-bit offsets and sizes; large-file support on Windows and POSIX; binary-only mode; exact `read`/`write`; `filesize` via `fstat` without moving the position; move-only ownership; `seek` and `write` correctness fixes. |
+| **0.1.1** | Removed external dependencies. `VHFSYS` defined its own nested `verr` alias (`std::uint32_t`); `vok`/`verror` were internal helpers in `vhfsys.cpp`; `vhfsys.hpp` included `<string>` and `<vector>` directly; standalone builds worked with the C++17 standard library only. |
+| **0.1.0** | 64-bit offsets and sizes; large-file support on Windows and Linux; binary-only mode; exact `read`/`write`; `filesize` via `fstat` without moving the position; move-only ownership; `seek` and `write` correctness fixes. |
 | **0.0.2** | Initial public revision. |
 | **0.0.1** | Initial implementation. |
 
