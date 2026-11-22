@@ -7,7 +7,7 @@
  * License       : MIT
  * File          : src/vhfile_unix.cpp
  * Content size  : 8448
- * Date / Time   : 22-11-2026 17:54:33
+ * Date / Time   : 22-11-2026 19:02:24
  * MD5           : 2c5a7d4c546a5c581544c769c969dda0
  * Notes         : MD5 = file content without header/footer
  * Encoding      : UTF-8
@@ -411,7 +411,7 @@ bool VHFile::filesize(std::uint64_t *size) noexcept
  * File             : src/vhfile_unix.cpp
  * Revision         : 0.1.3
  * Content size     : 8448
- * Date / Time      : 22-11-2026 17:54:33
+ * Date / Time      : 22-11-2026 19:02:24
  * MD5              : 2c5a7d4c546a5c581544c769c969dda0
  * Copyright        : © 2026 Viktor Glebov
  * ====================================================================== */

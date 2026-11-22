@@ -6,9 +6,9 @@
  * Disclaimer    : Provided "AS IS", without warranty.
  * License       : MIT
  * File          : src/vhfsys.hpp
- * Content size  : 3397
- * Date / Time   : 22-11-2026 17:54:33
- * MD5           : e4143f31edd404403be1b510dde2329a
+ * Content size  : 3721
+ * Date / Time   : 22-11-2026 19:02:24
+ * MD5           : a04923a52e8bd2a17c9f3f23c66f4b2a
  * Notes         : MD5 = file content without header/footer
  * Encoding      : UTF-8
  * Author        : Viktor Glebov / V01G04A81
@@ -116,8 +116,8 @@ public:
  * Library          : vhlibfsys
  * File             : src/vhfsys.hpp
  * Revision         : 0.1.3
- * Content size     : 3397
- * Date / Time      : 22-11-2026 17:54:33
- * MD5              : e4143f31edd404403be1b510dde2329a
+ * Content size     : 3721
+ * Date / Time      : 22-11-2026 19:02:24
+ * MD5              : a04923a52e8bd2a17c9f3f23c66f4b2a
  * Copyright        : © 2026 Viktor Glebov
  * ====================================================================== */

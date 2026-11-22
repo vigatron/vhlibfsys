@@ -6,9 +6,9 @@
  * Disclaimer    : Provided "AS IS", without warranty.
  * License       : MIT
  * File          : src/vhfsys.cpp
- * Content size  : 6352
- * Date / Time   : 22-11-2026 17:54:33
- * MD5           : 9b208536088d70e862685e7b6192b5b4
+ * Content size  : 7534
+ * Date / Time   : 22-11-2026 19:02:24
+ * MD5           : 2aece3bb5e429151579d82cc4f202557
  * Notes         : MD5 = file content without header/footer
  * Encoding      : UTF-8
  * Author        : Viktor Glebov / V01G04A81
@@ -323,8 +323,8 @@ std::string VHFSYS::ExtractFilename(const std::string &fullPathFileName) noexcep
  * Library          : vhlibfsys
  * File             : src/vhfsys.cpp
  * Revision         : 0.1.3
- * Content size     : 6352
- * Date / Time      : 22-11-2026 17:54:33
- * MD5              : 9b208536088d70e862685e7b6192b5b4
+ * Content size     : 7534
+ * Date / Time      : 22-11-2026 19:02:24
+ * MD5              : 2aece3bb5e429151579d82cc4f202557
  * Copyright        : © 2026 Viktor Glebov
  * ====================================================================== */
