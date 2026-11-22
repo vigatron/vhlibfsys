@@ -8,9 +8,23 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace fs = std::filesystem;
+
+static_assert(noexcept(VHFSYS::FileExist(std::declval<const std::string &>())), "FileExist must be noexcept");
+static_assert(noexcept(VHFSYS::DirExist(std::declval<const std::filesystem::path &>())), "DirExist(path) must be noexcept");
+static_assert(noexcept(VHFSYS::DirExist(std::declval<const std::string &>())), "DirExist(string) must be noexcept");
+static_assert(noexcept(VHFSYS::CreateNestedDir(std::declval<const std::string &>())), "CreateNestedDir must be noexcept");
+static_assert(noexcept(VHFSYS::RemoveNestedDir(std::declval<const std::string &>())), "RemoveNestedDir must be noexcept");
+static_assert(noexcept(VHFSYS::ReadVectorFromFile(std::declval<const std::string &>())), "ReadVectorFromFile must be noexcept");
+static_assert(noexcept(VHFSYS::WriteVectorToFile(std::declval<const std::string &>(),
+                                                 std::declval<const std::vector<std::uint8_t> &>())), "WriteVectorToFile must be noexcept");
+static_assert(noexcept(VHFSYS::ExtractFilename(std::declval<const std::string &>())), "ExtractFilename must be noexcept");
+static_assert(noexcept(VHFSYS::verror(0)), "verror must be noexcept");
+static_assert(VHFSYS::vok == 0, "vok must be 0");
 
 static int g_failures = 0;
 
@@ -91,6 +105,87 @@ static void test_createnesteddir()
     fs::remove_all(base, ec);
 }
 
+static void test_removenesteddir()
+{
+    fs::path base = make_temp_path("vhfsys_remove");
+    fs::path nested = base / "a" / "b";
+    std::error_code ec;
+    fs::remove_all(base, ec);
+
+    // Empty path is rejected.
+    TEST_ASSERT(VHFSYS::RemoveNestedDir(std::string("")) == 1);
+
+    // Filesystem roots and the current/parent directory are rejected before any FS access.
+    TEST_ASSERT(VHFSYS::RemoveNestedDir(std::string("/")) == 1);
+    TEST_ASSERT(VHFSYS::RemoveNestedDir(std::string(".")) == 1);
+    TEST_ASSERT(VHFSYS::RemoveNestedDir(std::string("..")) == 1);
+    TEST_ASSERT(VHFSYS::RemoveNestedDir(std::string("/..")) == 1);
+
+    // Strict mode: any ".." component in the original path is rejected.
+    TEST_ASSERT(VHFSYS::RemoveNestedDir((base / ".." / "x").string()) == 1);
+    TEST_ASSERT(VHFSYS::RemoveNestedDir(std::string("a/../b")) == 1);
+
+#if defined(_WIN32)
+    TEST_ASSERT(VHFSYS::RemoveNestedDir(std::string("C:\\")) == 1);
+    TEST_ASSERT(VHFSYS::RemoveNestedDir(std::string("C:")) == 1);
+#endif
+
+    // Refuse to remove the current working directory.
+    {
+        const fs::path old_cwd = fs::current_path(ec);
+        TEST_ASSERT(!ec);
+        fs::create_directories(base, ec);
+        TEST_ASSERT(!ec);
+        fs::current_path(base, ec);
+        TEST_ASSERT(!ec);
+        TEST_ASSERT(VHFSYS::RemoveNestedDir(base.string()) == 1);
+        fs::current_path(old_cwd, ec);
+        TEST_ASSERT(!ec);
+    }
+
+    // Missing path is idempotent success.
+    TEST_ASSERT(VHFSYS::RemoveNestedDir((base / "missing").string()) == 0);
+
+    // Existing nested directory is removed recursively.
+    fs::create_directories(nested, ec);
+    TEST_ASSERT(VHFSYS::DirExist(nested.string()) == true);
+    TEST_ASSERT(VHFSYS::RemoveNestedDir(base.string()) == 0);
+    TEST_ASSERT(fs::exists(base) == false);
+}
+
+static void test_writevector_errors()
+{
+    fs::path dir = make_temp_path("vhfsys_write_errors");
+    std::error_code ec;
+    fs::remove_all(dir, ec);
+    fs::create_directories(dir, ec);
+
+    // Empty filename.
+    TEST_ASSERT(VHFSYS::WriteVectorToFile(std::string(""),
+                                          std::vector<std::uint8_t>{0x01}) == 1);
+
+    // Parent path is a regular file, not a directory.
+    fs::path filePath = dir / "afile";
+    {
+        std::ofstream out(filePath);
+        out << "x";
+    }
+    TEST_ASSERT(VHFSYS::WriteVectorToFile((filePath / "child").string(),
+                                          std::vector<std::uint8_t>{0x01}) == 1);
+
+    // Output path is an existing directory; opening it for writing must fail.
+    TEST_ASSERT(VHFSYS::WriteVectorToFile(dir.string(),
+                                          std::vector<std::uint8_t>{0x01}) == 2);
+
+#if defined(__linux__)
+    // Linux-only check: /dev/full always fails writes with ENOSPC.
+    TEST_ASSERT(VHFSYS::WriteVectorToFile(std::string("/dev/full"),
+                                          std::vector<std::uint8_t>{0x01}) == 3);
+#endif
+
+    fs::remove_all(dir, ec);
+}
+
 static void test_readvector_writevector()
 {
     fs::path dir = make_temp_path("vhfsys_vecdir");
@@ -139,6 +234,8 @@ int main()
 {
     test_fileexist_direxist();
     test_createnesteddir();
+    test_removenesteddir();
+    test_writevector_errors();
     test_readvector_writevector();
     test_extractfilename();
 

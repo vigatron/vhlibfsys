@@ -967,10 +967,11 @@ Removes a directory and all its contents recursively.
 
 **Returns:**
 - `0` if the directory and its contents were removed successfully.
-- `1` if `dirpath` is empty or removal fails.
+- `1` if `dirpath` is empty, refers to an unsafe path, or removal fails.
 
 **Notes:**
 - A non-existent path is treated as success (the operation is idempotent).
+- Unsafe targets are rejected before any filesystem access: filesystem roots (`/`, `C:\`, `C:`, `\\server\share`), `.`, `..`, the current working directory, and any path that contains a `..` component or collapses to a root (`/..`).
 - The function uses `std::error_code` internally and never propagates `std::filesystem::filesystem_error`.
 - The operation removes files and directories recursively; use with care.
 
@@ -1337,6 +1338,7 @@ Possible future additions:
 
 | Version | Changes |
 |---|---|
+| **0.1.3** | Completed the Windows `VHFile` implementation without a common `vhfile.cpp`; made `VHFile` and `VHFSYS` APIs `noexcept` and exception-safe; switched `VHFSYS` filesystem helpers to `std::error_code`; `WriteVectorToFile` now checks `flush()` / `close()`; documented `RemoveNestedDir`; added Windows CI. |
 | **0.1.2** | Platform-specific implementation split (Windows/Linux). Full Doxygen documentation added for all class methods. Unit tests added in `tests/` with separate `tests/CMakeLists.txt`, integrated via `enable_testing()`/`ctest`, configurable with `MYLIB_BUILD_TESTS`. |
 | **0.1.1** | Removed external dependencies. `VHFSYS` defined its own nested `verr` alias (`std::uint32_t`); `vok`/`verror` were internal helpers in `vhfsys.cpp`; `vhfsys.hpp` included `<string>` and `<vector>` directly; standalone builds worked with the C++17 standard library only. |
 | **0.1.0** | 64-bit offsets and sizes; large-file support on Windows and Linux; binary-only mode; exact `read`/`write`; `filesize` via `fstat` without moving the position; move-only ownership; `seek` and `write` correctness fixes. |
@@ -1363,6 +1365,6 @@ The software is provided “AS IS”, without warranty of any kind, express or i
 
 ---
 
-**vhlibfsys** · Revision **0.1.2** · C++17 · MIT
+**vhlibfsys** · Revision **0.1.3** · C++17 · MIT
 
 (С) 2026 Viktor Glebov / V01G04A81

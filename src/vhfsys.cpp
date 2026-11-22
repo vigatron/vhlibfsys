@@ -1,3 +1,19 @@
+/* ======================================================================================
+ * Library       : vhlibfsys
+ * Description   : A small C++17 filesystem helper library with 64-bit binary file I/O.
+ * Revision      : 0.1.3
+ * Source        : https://github.com/vigatron/vhlibfsys
+ * Disclaimer    : Provided "AS IS", without warranty.
+ * License       : MIT
+ * File          : src/vhfsys.cpp
+ * Content size  : 6352
+ * Date / Time   : 22-11-2026 17:54:33
+ * MD5           : 9b208536088d70e862685e7b6192b5b4
+ * Notes         : MD5 = file content without header/footer
+ * Encoding      : UTF-8
+ * Author        : Viktor Glebov / V01G04A81
+ * Copyright     : © 2026 Viktor Glebov
+ * ========================[ BEGIN FILE CONTENT ]====================================== */
 #include "vhfsys.hpp"
 
 #include <cstddef>
@@ -125,6 +141,8 @@ VHFSYS::verr VHFSYS::CreateNestedDir(const std::string &dirpath) noexcept
 
 /**
  * @brief Removes a directory and all its contents recursively.
+ * @details Rejects unsafe targets before any filesystem access: filesystem roots, ".", "..",
+ *          any path containing a ".." component, and the current working directory.
  * @param dirpath Path to the directory to remove.
  * @return vok on success, error code otherwise.
  */
@@ -135,8 +153,37 @@ VHFSYS::verr VHFSYS::RemoveNestedDir(const std::string &dirpath) noexcept
         if (dirpath.empty())
             return verror(1);
 
+        const fs::path path(dirpath);
+
+        // Reject filesystem roots: "/", "C:\\", "C:", "\\\\server\\share".
+        if (!path.has_relative_path())
+            return verror(1);
+
+        // Strict mode: reject any parent-directory component of the original path.
+        for (const fs::path &part : path)
+        {
+            if (part == "..")
+                return verror(1);
+        }
+
+        // Lexical normalization only: no filesystem access, cannot throw.
+        const fs::path norm = path.lexically_normal();
+
+        // Reject "", "." and anything that collapses to a root ("/..").
+        if (norm.empty() || norm == "." || norm == "..")
+            return verror(1);
+
+        if (norm == norm.root_path())
+            return verror(1);
+
+        // Refuse to remove the current working directory.
         std::error_code ec;
-        fs::remove_all(dirpath, ec);
+        const fs::path cwd = fs::current_path(ec);
+        if (!ec && fs::absolute(norm, ec).lexically_normal() == cwd.lexically_normal())
+            return verror(1);
+
+        ec.clear();
+        fs::remove_all(norm, ec);
 
         if (ec)
             return verror(1);
@@ -272,3 +319,12 @@ std::string VHFSYS::ExtractFilename(const std::string &fullPathFileName) noexcep
         return {};
     }
 }
+/* ========================[  END FILE CONTENT  ]========================
+ * Library          : vhlibfsys
+ * File             : src/vhfsys.cpp
+ * Revision         : 0.1.3
+ * Content size     : 6352
+ * Date / Time      : 22-11-2026 17:54:33
+ * MD5              : 9b208536088d70e862685e7b6192b5b4
+ * Copyright        : © 2026 Viktor Glebov
+ * ====================================================================== */

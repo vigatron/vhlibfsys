@@ -8,9 +8,27 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace fs = std::filesystem;
+
+static_assert(std::is_nothrow_default_constructible<VHFile>::value, "VHFile() must be noexcept");
+static_assert(std::is_nothrow_constructible<VHFile, const std::string &>::value, "VHFile(string) must be noexcept");
+static_assert(std::is_nothrow_move_constructible<VHFile>::value, "VHFile move constructor must be noexcept");
+static_assert(std::is_nothrow_move_assignable<VHFile>::value, "VHFile move assignment must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().assign(std::declval<const std::string &>())), "assign must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().filesize(nullptr)), "filesize must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().pos(nullptr)), "pos must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().seek(0)), "seek must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().read(nullptr, 0)), "read must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().write(nullptr, 0)), "write must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().openfile()), "openfile must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().createfile()), "createfile must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().closefile()), "closefile must be noexcept");
+static_assert(noexcept(std::declval<const VHFile &>().isopen()), "isopen must be noexcept");
+static_assert(noexcept(std::declval<const VHFile &>().isclosed()), "isclosed must be noexcept");
 
 static int g_failures = 0;
 
