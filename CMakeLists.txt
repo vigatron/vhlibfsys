@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(vhlibfsys VERSION 0.1.2 LANGUAGES CXX)
+project(vhlibfsys VERSION 0.1.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,7 +13,7 @@ configure_file(
 
 set(VHLIB_FSYS_SOURCES
     src/vhfile.hpp
-    src/vhfile.cpp
+
     src/vhfsys.hpp
     src/vhfsys.cpp
 )

@@ -8,9 +8,27 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace fs = std::filesystem;
+
+static_assert(std::is_nothrow_default_constructible<VHFile>::value, "VHFile() must be noexcept");
+static_assert(std::is_nothrow_constructible<VHFile, const std::string &>::value, "VHFile(string) must be noexcept");
+static_assert(std::is_nothrow_move_constructible<VHFile>::value, "VHFile move constructor must be noexcept");
+static_assert(std::is_nothrow_move_assignable<VHFile>::value, "VHFile move assignment must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().assign(std::declval<const std::string &>())), "assign must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().filesize(nullptr)), "filesize must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().pos(nullptr)), "pos must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().seek(0)), "seek must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().read(nullptr, 0)), "read must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().write(nullptr, 0)), "write must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().openfile()), "openfile must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().createfile()), "createfile must be noexcept");
+static_assert(noexcept(std::declval<VHFile &>().closefile()), "closefile must be noexcept");
+static_assert(noexcept(std::declval<const VHFile &>().isopen()), "isopen must be noexcept");
+static_assert(noexcept(std::declval<const VHFile &>().isclosed()), "isclosed must be noexcept");
 
 static int g_failures = 0;
 
@@ -171,12 +189,47 @@ static void test_write_read_seek_pos_filesize()
     fs::remove(p, ec);
 }
 
+static void test_filesize_closed()
+{
+    fs::path p = make_temp_path("vhfile_fsize");
+    std::error_code ec;
+    fs::remove(p, ec);
+
+    const char data[] = "CLOSED_SIZE";
+    const size_t dsz = sizeof(data) - 1;
+
+    {
+        VHFile w(p.string());
+        TEST_ASSERT(w.write(data, dsz) == true);
+        TEST_ASSERT(w.closefile() == true);
+    }
+
+    // filesize on a closed file must open it read-only and return the size
+    VHFile r(p.string());
+    TEST_ASSERT(r.isclosed());
+    TEST_ASSERT(r.filesize(nullptr) == false);
+
+    std::uint64_t sz = 0;
+    TEST_ASSERT(r.filesize(&sz) == true);
+    TEST_ASSERT(sz == static_cast<std::uint64_t>(dsz));
+
+    TEST_ASSERT(r.closefile() == true);
+
+    // non-existent file -> false
+    VHFile nf((p.parent_path() / "nope_fsize.bin").string());
+    std::uint64_t bad = 0;
+    TEST_ASSERT(nf.filesize(&bad) == false);
+
+    fs::remove(p, ec);
+}
+
 int main()
 {
     test_default_ctor_and_assign();
     test_ctor_with_filename_and_move();
     test_openfile_createfile_closefile_modes();
     test_write_read_seek_pos_filesize();
+    test_filesize_closed();
 
     if (g_failures == 0)
     {

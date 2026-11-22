@@ -1,14 +1,14 @@
 /* ======================================================================================
  * Library       : vhlibfsys
  * Description   : A small C++17 filesystem helper library with 64-bit binary file I/O.
- * Revision      : 0.1.2
+ * Revision      : 0.1.3
  * Source        : https://github.com/vigatron/vhlibfsys
  * Disclaimer    : Provided "AS IS", without warranty.
  * License       : MIT
  * File          : src/vhfile.hpp
- * Content size  : 5260
- * Date / Time   : 28-10-2026 14:11:58
- * MD5           : 1e366f1947018ae64e2d9ba46a757d96
+ * Content size  : 5677
+ * Date / Time   : 22-11-2026 17:54:33
+ * MD5           : 93c6871dff4b8d38db24a579d31ce734
  * Notes         : MD5 = file content without header/footer
  * Encoding      : UTF-8
  * Author        : Viktor Glebov / V01G04A81
@@ -28,6 +28,7 @@
  * VHFile provides move-only ownership of a FILE* handle opened in binary mode.
  * The file is opened on demand: read-type operations open with "rb", write operations
  * open with "wb". Supports 64-bit file positions/sizes on Windows and POSIX.
+ * All public member functions are noexcept; allocation failures are handled internally.
  */
 class VHFile
 {
@@ -35,13 +36,14 @@ public:
     /**
      * @brief Default constructor. Creates a closed file object with empty filename.
      */
-    VHFile();
+    VHFile() noexcept;
 
     /**
      * @brief Constructor that stores filename. Does not open the file.
+     * @details If allocation of the filename fails, the object remains closed with an empty filename.
      * @param filename Path to the file to be opened later.
      */
-    explicit VHFile(const std::string &filename);
+    explicit VHFile(const std::string &filename) noexcept;
 
     /**
      * @brief Destructor. Closes the file if open.
@@ -73,9 +75,10 @@ public:
 
     /**
      * @brief Assigns a new filename. Closes current file if open, does not open new file.
+     * @details If allocation fails, the previous filename and open handle are preserved.
      * @param filename New path to file.
      */
-    void assign(const std::string &filename);
+    void assign(const std::string &filename) noexcept;
 
     /**
      * @brief Gets file size in bytes.
@@ -83,7 +86,7 @@ public:
      * @param size Pointer to receive size. Must not be nullptr.
      * @return true on success, false on failure.
      */
-    bool filesize(std::uint64_t *size);
+    bool filesize(std::uint64_t *size) noexcept;
 
     /**
      * @brief Gets current file position.
@@ -91,7 +94,7 @@ public:
      * @param pos Pointer to receive position. Must not be nullptr.
      * @return true on success, false on failure.
      */
-    bool pos(std::uint64_t *pos);
+    bool pos(std::uint64_t *pos) noexcept;
 
     /**
      * @brief Seeks to absolute position.
@@ -99,7 +102,7 @@ public:
      * @param pos Absolute byte offset from beginning of file.
      * @return true on success, false on failure.
      */
-    bool seek(std::uint64_t pos);
+    bool seek(std::uint64_t pos) noexcept;
 
     /**
      * @brief Reads exactly sz bytes into ptr.
@@ -110,7 +113,7 @@ public:
      * @param seekoffs Absolute offset to seek to before reading, or 0 for no seek.
      * @return true if exactly sz bytes read (or sz == 0), false on error/short read.
      */
-    bool read(void *ptr, std::size_t sz, std::uint64_t seekoffs = 0);
+    bool read(void *ptr, std::size_t sz, std::uint64_t seekoffs = 0) noexcept;
 
     /**
      * @brief Writes exactly sz bytes from ptr.
@@ -120,51 +123,51 @@ public:
      * @param sz Number of bytes to write.
      * @return true if exactly sz bytes written (or sz == 0), false on error/short write.
      */
-    bool write(const void *ptr, std::size_t sz);
+    bool write(const void *ptr, std::size_t sz) noexcept;
 
     /**
      * @brief Opens file for reading in binary mode ("rb").
      * @details Idempotent if already open read-only. Returns false if already open for writing.
      * @return true if open for reading, false on failure.
      */
-    bool openfile();
+    bool openfile() noexcept;
 
     /**
      * @brief Opens file for writing in binary mode ("wb"), creating/truncating.
      * @details Idempotent if already open writable. Returns false if already open for reading.
      * @return true if open for writing, false on failure.
      */
-    bool createfile();
+    bool createfile() noexcept;
 
     /**
      * @brief Closes file handle.
      * @details Resets handle to nullptr even if fclose fails. Safe to call multiple times.
      * @return true if fclose succeeded, false if already closed or fclose failed.
      */
-    bool closefile();
+    bool closefile() noexcept;
 
     /**
      * @brief Checks if file is open.
      * @return true if file handle != nullptr.
      */
-    bool isopen() const;
+    bool isopen() const noexcept;
 
     /**
      * @brief Checks if file is closed.
      * @return true if file handle == nullptr.
      */
-    bool isclosed() const;
+    bool isclosed() const noexcept;
 
 private:
     /**
      * @brief Prints read error message to stderr with filename and errno.
      */
-    void dmperr();
+    void dmperr() noexcept;
 
     /**
      * @brief Prints write/create error message to stderr with filename and errno.
      */
-    void dmpwerr();
+    void dmpwerr() noexcept;
 
     std::string fname;  ///< Filename associated with object
     FILE *file;         ///< Open FILE* handle, nullptr if closed
@@ -173,9 +176,9 @@ private:
 /* ========================[  END FILE CONTENT  ]========================
  * Library          : vhlibfsys
  * File             : src/vhfile.hpp
- * Revision         : 0.1.2
- * Content size     : 5260
- * Date / Time      : 28-10-2026 14:11:58
- * MD5              : 1e366f1947018ae64e2d9ba46a757d96
+ * Revision         : 0.1.3
+ * Content size     : 5677
+ * Date / Time      : 22-11-2026 17:54:33
+ * MD5              : 93c6871dff4b8d38db24a579d31ce734
  * Copyright        : © 2026 Viktor Glebov
  * ====================================================================== */
