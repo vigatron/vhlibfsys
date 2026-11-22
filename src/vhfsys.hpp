@@ -35,6 +35,8 @@ public:
      * @brief Error/result code type.
      */
     using verr = uint32_t;
+    static const verr vok = 0;
+    static verr verror(verr x) { return x; }
 
     /**
      * @brief Checks whether the specified path refers to an existing file.
@@ -64,6 +66,9 @@ public:
      * @return 0 if directory exists or created successfully, error code otherwise.
      */
     static verr CreateNestedDir(const std::string &dirpath);
+
+    /** */
+    static verr RemoveNestedDir(const std::string &dirpath);
 
     /**
      * @brief Reads the entire contents of a file into a byte vector.

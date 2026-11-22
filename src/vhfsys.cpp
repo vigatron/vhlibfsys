@@ -1,49 +1,23 @@
-/* ======================================================================================
- * Library       : vhlibfsys
- * Description   : A small C++17 filesystem helper library with 64-bit binary file I/O.
- * Revision      : 0.1.2
- * Source        : https://github.com/vigatron/vhlibfsys
- * Disclaimer    : Provided "AS IS", without warranty.
- * License       : MIT
- * File          : src/vhfsys.cpp
- * Content size  : 5168
- * Date / Time   : 28-10-2026 14:11:58
- * MD5           : e35da9354ee0ac52863525582e7fef61
- * Notes         : MD5 = file content without header/footer
- * Encoding      : UTF-8
- * Author        : Viktor Glebov / V01G04A81
- * Copyright     : © 2026 Viktor Glebov
- * ========================[ BEGIN FILE CONTENT ]====================================== */
+#include "vhfsys.hpp"
+
 #include <fstream>
 #include <filesystem>
-
-#include "vhfsys.hpp"
+#include <system_error>
 
 namespace fs = std::filesystem;
 
-#ifndef VHPLATFORM_INCLUDED
-using verr=uint32_t;
-#define vok ((verr)0)
-
-verr verror(verr retcode) { return retcode; }
-#endif
-
 /**
  * @brief Checks whether the specified path refers to an existing file.
- *
+ * @details Returns true if path exists and is not a directory. Does not require regular file.
  * @param filename Path to the file.
- *
- * @return true if the path exists and does not refer to a directory;
- *         false otherwise.
- *
- * @note This function does not verify file access permissions.
+ * @return true if exists and not directory, false otherwise.
  */
 bool VHFSYS::FileExist(const std::string &filename)
 {
-    if (!std::filesystem::exists(filename))
+    if (!fs::exists(filename))
         return false;
 
-    if (std::filesystem::is_directory(filename))
+    if (fs::is_directory(filename))
         return false;
 
     return true;
@@ -51,51 +25,31 @@ bool VHFSYS::FileExist(const std::string &filename)
 
 /**
  * @brief Checks whether the specified path refers to an existing directory.
- *
  * @param dirpath Path to the directory.
- *
- * @return true if the path refers to an existing directory;
- *         false otherwise.
+ * @return true if exists and is directory, false otherwise.
  */
-bool VHFSYS::DirExist(const std::filesystem::path &dirpath)
-{
-    if (dirpath.empty())
+bool VHFSYS::DirExist(const std::filesystem::path &dirpath) {
+    if (dirpath.empty() || !fs::exists(dirpath)) {
         return false;
-
-    if (!fs::exists(dirpath))
-        return false;
-
-    if (!std::filesystem::is_directory(dirpath))
-        return false;
-
-    return true;
+    }
+    return fs::is_directory(dirpath);
 }
 
 /**
  * @brief Checks whether the specified directory path exists.
- *
  * @param dirpath Directory path as a string.
- *
- * @return true if the path refers to an existing directory;
- *         false otherwise.
+ * @return true if exists and is directory, false otherwise.
  */
-bool VHFSYS::DirExist(const std::string &dirpath)
-{
+bool VHFSYS::DirExist(const std::string &dirpath) {
     return DirExist(fs::path(dirpath));
 }
 
 /**
  * @brief Creates a directory and any missing parent directories.
- *
  * @param dirpath Path to the directory to create.
- *
- * @return vok if the directory already exists or is created successfully;
- *         an error code otherwise.
- *
- * @note Existing parent directories are preserved.
+ * @return vok if the directory already exists or is created successfully, error code otherwise.
  */
-verr VHFSYS::CreateNestedDir(const std::string &dirpath)
-{
+VHFSYS::verr VHFSYS::CreateNestedDir(const std::string &dirpath) {
     if (dirpath.empty())
         return verror(1);
 
@@ -114,31 +68,42 @@ verr VHFSYS::CreateNestedDir(const std::string &dirpath)
 }
 
 /**
- * @brief Reads the entire contents of a file into a byte vector.
- *
- * @param filename Path to the input file.
- *
- * @return A vector containing the file data.
- *         An empty vector is returned if the file is empty
- *         or an error occurs.
- *
- * @note The file is opened in binary mode.
+ * @brief Removes a directory and all its contents recursively.
+ * @param dirpath Path to the directory to remove.
+ * @return vok on success, error code otherwise.
  */
-std::vector<uint8_t> VHFSYS::ReadVectorFromFile(const std::string &filename)
+VHFSYS::verr VHFSYS::RemoveNestedDir(const std::string &dirpath)
 {
-    std::vector<uint8_t> r;
+    std::error_code ec;
 
+    fs::remove_all(dirpath, ec);
+
+    if (ec)
+    {
+        return verror(1);
+    }
+
+    return vok;
+}
+
+
+/**
+ * @brief Reads the entire contents of a file into a byte vector.
+ * @param filename Path to the input file.
+ * @return Vector with file data, or empty vector on error/empty file.
+ */
+std::vector<uint8_t> VHFSYS::ReadVectorFromFile(const std::string &filename) {
+    std::vector<uint8_t> r;
+    
     // Открываем файл в бинарном режиме с курсором в конце (ate), чтобы узнать размер
     std::ifstream in(filename, std::ios::binary | std::ios::ate);
-    if (!in)
-    {
+    if (!in) {
         return r;
     }
 
     // Получаем размер файла
     std::streamsize size = in.tellg();
-    if (size <= 0)
-    {
+    if (size <= 0) {
         return r;
     }
 
@@ -150,8 +115,7 @@ std::vector<uint8_t> VHFSYS::ReadVectorFromFile(const std::string &filename)
     in.read(reinterpret_cast<char *>(r.data()), size);
 
     // Если при чтении произошла ошибка, очищаем вектор
-    if (!in)
-    {
+    if (!in) {
         r.clear();
     }
 
@@ -159,65 +123,50 @@ std::vector<uint8_t> VHFSYS::ReadVectorFromFile(const std::string &filename)
 }
 
 /**
- * @brief Reads the entire contents of a file into a byte vector.
- *
- * @param filename Path to the input file.
- *
- * @return A vector containing the file data.
- *         An empty vector is returned if the file is empty
- *         or an error occurs.
- *
- * @note The file is opened in binary mode.
+ * @brief Writes byte vector to a file, creating parent directories if needed.
+ * @param filename Path to the output file.
+ * @param data Data to write.
+ * @return 0 on success, 1 on empty filename/dir creation failure, 2 if cannot open file, 3 on write failure.
  */
-verr VHFSYS::WriteVectorToFile(
-    const std::string &filename,
-    const std::vector<uint8_t> &data)
-{
+VHFSYS::verr VHFSYS::WriteVectorToFile(const std::string &filename, const std::vector<uint8_t> &data) {
+
     if (filename.empty())
         return verror(1);
 
-    const fs::path filePath(filename);
-    const fs::path dir = filePath.parent_path();
+    fs::path filePath(filename);
+    fs::path dir = filePath.parent_path();
 
     // Create parent directories only if the path is not empty.
-    if (!dir.empty() && !DirExist(dir))
-    {
+    if (!dir.empty() && !DirExist(dir)) {
         if (vok != CreateNestedDir(dir.string()))
             return verror(1);
     }
 
+    // Open file in binary mode (truncate)
     std::ofstream out(filePath, std::ios::binary | std::ios::trunc);
-    if (!out)
+    if (!out) {
+        // Failed to open file
         return verror(2);
-
-    if (!data.empty())
-    {
-        out.write(
-            reinterpret_cast<const char *>(data.data()),
-            static_cast<std::streamsize>(data.size()));
     }
 
-    if (!out)
+    // Write data to file
+    if (!data.empty()) {
+        out.write(reinterpret_cast<const char *>(data.data()),
+                  static_cast<std::streamsize>(data.size()));
+    }
+    if (!out) {
+        // Write error
         return verror(3);
-
-    out.close();
-
-    if (out.fail())
-        return verror(3);
+    }
 
     return vok;
 }
 
 /**
  * @brief Extracts the filename component from a path string.
- *
- * Supports both forward slashes ('/') and backslashes ('\\')
- * as path separators.
- *
+ * @details Supports both forward slashes '/' and backslashes '\\'.
  * @param fullPathFileName Full or relative path to process.
- *
- * @return The filename component, or an empty string if the path
- *         ends with a separator or the input is empty.
+ * @return Filename component, or empty string if ends with separator or input empty.
  */
 std::string VHFSYS::ExtractFilename(const std::string &fullPathFileName)
 {
@@ -228,12 +177,3 @@ std::string VHFSYS::ExtractFilename(const std::string &fullPathFileName)
     }
     return fullPathFileName.substr(last_slash + 1);
 }
-/* ========================[  END FILE CONTENT  ]========================
- * Library          : vhlibfsys
- * File             : src/vhfsys.cpp
- * Revision         : 0.1.2
- * Content size     : 5168
- * Date / Time      : 28-10-2026 14:11:58
- * MD5              : e35da9354ee0ac52863525582e7fef61
- * Copyright        : © 2026 Viktor Glebov
- * ====================================================================== */

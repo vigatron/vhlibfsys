@@ -1,12 +1,3 @@
-<!--
-  ======================================================================
-  vhlibfsys — README
-  Revision : 0.1.2
-  Author   : Viktor Glebov / V01G04A81
-  License  : MIT
-  ======================================================================
--->
- 
 # vhlibfsys
  
 **A small C++17 filesystem helper library with 64-bit binary file I/O.**
@@ -18,7 +9,7 @@
 | Property | Value |
 |---|---|
 | **Library** | `vhlibfsys` |
-| **Revision** | `0.1.2` |
+| **Revision** | `0.1.3` |
 | **Language** | C++17 |
 | **Author** | Viktor Glebov / V01G04A81 |
 | **License** | MIT |

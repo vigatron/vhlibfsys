@@ -171,12 +171,47 @@ static void test_write_read_seek_pos_filesize()
     fs::remove(p, ec);
 }
 
+static void test_filesize_closed()
+{
+    fs::path p = make_temp_path("vhfile_fsize");
+    std::error_code ec;
+    fs::remove(p, ec);
+
+    const char data[] = "CLOSED_SIZE";
+    const size_t dsz = sizeof(data) - 1;
+
+    {
+        VHFile w(p.string());
+        TEST_ASSERT(w.write(data, dsz) == true);
+        TEST_ASSERT(w.closefile() == true);
+    }
+
+    // filesize on a closed file must open it read-only and return the size
+    VHFile r(p.string());
+    TEST_ASSERT(r.isclosed());
+    TEST_ASSERT(r.filesize(nullptr) == false);
+
+    std::uint64_t sz = 0;
+    TEST_ASSERT(r.filesize(&sz) == true);
+    TEST_ASSERT(sz == static_cast<std::uint64_t>(dsz));
+
+    TEST_ASSERT(r.closefile() == true);
+
+    // non-existent file -> false
+    VHFile nf((p.parent_path() / "nope_fsize.bin").string());
+    std::uint64_t bad = 0;
+    TEST_ASSERT(nf.filesize(&bad) == false);
+
+    fs::remove(p, ec);
+}
+
 int main()
 {
     test_default_ctor_and_assign();
     test_ctor_with_filename_and_move();
     test_openfile_createfile_closefile_modes();
     test_write_read_seek_pos_filesize();
+    test_filesize_closed();
 
     if (g_failures == 0)
     {

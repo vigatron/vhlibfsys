@@ -13,7 +13,7 @@ configure_file(
 
 set(VHLIB_FSYS_SOURCES
     src/vhfile.hpp
-    src/vhfile.cpp
+
     src/vhfsys.hpp
     src/vhfsys.cpp
 )
